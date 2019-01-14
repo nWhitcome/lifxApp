@@ -10,6 +10,7 @@ const store = new Vuex.Store({
 	mutations:{
 		updateArt (state, newIndex){
 			state.testCurrentArtId = newIndex;
+			socket.emit('getColors', this.state.testArt[this.state.testCurrentArtId])
 		},
 		updatePlaying (state){
 			state.musicPlaying = !state.musicPlaying;
@@ -36,6 +37,9 @@ const album_art = {
 		currentArtId (){
 			return this.$store.state.testArt[this.$store.state.testCurrentArtId];
 		},
+		currentAlbumInfo (){
+			return this.$store.state.testTrackInfo[this.$store.state.testCurrentArtId];
+		},
 	},
 	methods: {
 	},
@@ -51,6 +55,11 @@ const current_song = {
 		return {
 			playOrPause: 'play_arrow'
 		}
+	},
+	computed: {
+		currentAlbumInfo (){
+			return this.$store.state.testTrackInfo[this.$store.state.testCurrentArtId];
+		},
 	},
 	methods: {
 		testNextSong(event){
@@ -79,10 +88,14 @@ const current_song = {
 	},
 	template: `
 		<div id="album_info">
+			<div id="trackInfo">
+				<p class="albumInfoText"><b>{{ currentAlbumInfo[0] }}</b></p>
+				<p class="albumInfoText" style="color: #DDD; font-size: 25px;">{{ currentAlbumInfo[2] }} - {{ currentAlbumInfo[1] }}</p>
+			</div>
 			<div id="songNavigation" class="unselectable">
-				<i style="font-size: 100px;" @click="testPreviousSong()">skip_previous</i>
-				<i style="font-size: 100px;" @click="invertPlaying">{{ playOrPause }}</i>
-				<i style="font-size: 100px;" @click="testNextSong()">skip_next</i>
+				<i style="font-size: 80px;" @click="testPreviousSong()">skip_previous</i>
+				<i style="font-size: 80px;" @click="invertPlaying">{{ playOrPause }}</i>
+				<i style="font-size: 80px;" @click="testNextSong()">skip_next</i>
 			</div>
 		</div>
 	`
