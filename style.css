@@ -1,0 +1,79 @@
+@font-face {
+    font-family: 'Material_Icons';
+    src: url('./src/fonts/Material_Icons.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.unselectable{
+    user-select: none;
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    -webkit-user-select: none;
+    -o-user-select: none;
+}
+
+html{
+    background-color: #444;
+}
+
+#top_bar{
+    background-color: #333;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    height: 300px;
+    z-index: -1;
+}
+
+#album_info{
+    display: flex;
+    flex-direction: column;
+    color: white;
+    z-index: 2;
+    height: 300px;
+}
+
+#albumArt{
+    width: 500px;
+    height: 500px;
+    box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.178);
+}
+
+i{
+    font-family: 'Material_Icons';
+    font-style: normal;
+    cursor: pointer;
+    width: 100px;
+    height: 100px;
+    font-size: 100px;
+    border-radius: 50%;
+    line-height: 100px;
+    transition: .2s;
+}
+
+i:hover{
+    box-shadow: inset 0px 0px 0px 4px white;
+}
+
+i:active{
+    background-color: white;
+    color:#444;
+    transition: 0s;
+}
+
+#albumInfoFlex{
+    display: flex;
+    flex-direction: column;
+    padding: 50px 0 0 50px;
+    width: 500px;
+}
+
+#songNavigation{
+    padding: 20px 0;
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-evenly;
+}

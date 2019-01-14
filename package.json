@@ -1,0 +1,19 @@
+{
+  "name": "lifxapp",
+  "version": "1.0.0",
+  "description": "An app that changes Lifx bulb colors based on album art",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nathan Whitcome",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.4",
+    "node-vibrant": "^3.0.0",
+    "socket.io": "^2.2.0",
+    "socket.io-client": "^2.2.0",
+    "vue": "^2.5.22",
+    "vuex": "^3.0.1"
+  }
+}
