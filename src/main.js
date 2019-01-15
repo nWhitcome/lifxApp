@@ -2,18 +2,22 @@ var socket = io('http://localhost:3000');
 
 const store = new Vuex.Store({
 	state: {
-		testArt: ['src/testArt/basementPic.jpg', 'src/testArt/deskPic.jpg', 'src/testArt/tetonsPic.jpg'],
+		testArt: ['basementPic.jpg', 'deskPic.jpg', 'tetonsPic.jpg'],
 		testTrackInfo: [['Bars and Stages', 'It Came From the Basement', 'Tetrad'], ['Desk', 'Desk', 'Nathan Whitcome'], ['Tetons', 'Summer 2018', 'Nathan Whitcome']],
 		testCurrentArtId: 0,
 		musicPlaying: false,
+		currentColors: [],
 	},
 	mutations:{
 		updateArt (state, newIndex){
 			state.testCurrentArtId = newIndex;
-			socket.emit('getColors', this.state.testArt[this.state.testCurrentArtId])
 		},
 		updatePlaying (state){
 			state.musicPlaying = !state.musicPlaying;
+		},
+		updateColors (state, colors){
+			state.currentColors = colors;
+			console.log(colors);
 		},
 	},
 })
@@ -32,20 +36,40 @@ Vue.component('top_bar', {
 	`
 })
 
+Vue.component('color_display', {
+	methods: {
+	},
+	computed: {
+		currentArtId (){
+			return this.$store.state.currentColors;
+		},
+	},
+	template: `
+	<div id="colorDisplay">
+		<div v-for="item in currentArtId" class="colorBox" v-bind:style="{backgroundColor: item}">
+		</div>
+	</div>
+	`
+})
+
 const album_art = {
 	computed: {
 		currentArtId (){
-			return this.$store.state.testArt[this.$store.state.testCurrentArtId];
+			return 'src/testArt/' + this.$store.state.testArt[this.$store.state.testCurrentArtId];
 		},
 		currentAlbumInfo (){
 			return this.$store.state.testTrackInfo[this.$store.state.testCurrentArtId];
 		},
 	},
 	methods: {
+		logValues (value){
+			console.log(value);
+			socket.emit('getColors', 'src/testArt/' + this.$store.state.testArt[this.$store.state.testCurrentArtId])
+		}
 	},
 	template: `
 		<div>
-			<img id="albumArt" :src="currentArtId">
+			<img id="albumArt" @load="logValues('loaded')" :src="currentArtId">
 		</div>
 	`
 }
@@ -93,10 +117,11 @@ const current_song = {
 				<p class="albumInfoText" style="color: #DDD; font-size: 25px;">{{ currentAlbumInfo[2] }} - {{ currentAlbumInfo[1] }}</p>
 			</div>
 			<div id="songNavigation" class="unselectable">
-				<i style="font-size: 80px;" @click="testPreviousSong()">skip_previous</i>
-				<i style="font-size: 80px;" @click="invertPlaying">{{ playOrPause }}</i>
-				<i style="font-size: 80px;" @click="testNextSong()">skip_next</i>
+				<i class="iSmaller" @click="testPreviousSong()">skip_previous</i>
+				<i @click="invertPlaying">{{ playOrPause }}</i>
+				<i class="iSmaller" @click="testNextSong()">skip_next</i>
 			</div>
+			
 		</div>
 	`
 }
@@ -119,13 +144,22 @@ new Vue({
 		socket.on('connect', function(data){
 			console.log('connected');
 		}.bind(this));
+		socket.on('updateColors', function(data){
+			this.$store.commit('updateColors', data)
+		}.bind(this));
 	},
 	template: `
-	<div style="width: 100%; height: 100%;">
-		<top_bar></top_bar>
-		<div id="albumInfoFlex">
-			<album_art></album_art>
-			<current_song></current_song>
+	<div id="centerAll">
+		<div id="leftCenter">
+			<top_bar></top_bar>
+			<div id="albumInfoFlex">
+				<album_art></album_art>
+				<current_song></current_song>
+				<color_display></color_display>
+			</div>
+		</div>
+		<div id="rightCenter">
+			<h1>TEST</h1>
 		</div>
 	</div>
 	`
