@@ -24,6 +24,7 @@ body{
     display: flex;
     padding: 0;
     margin: 0;
+    flex-direction: column;
 }
 
 html{
@@ -33,19 +34,29 @@ html{
 
 #top_bar{
     background-color: #333;
-    position: fixed;
+    position: absolute;
     top: 0px;
     left: 0px;
     right: 0px;
-    height: 300px;
+    height: 100px;
     z-index: -1;
 }
 
+#bottom_bar{
+    background-color: #333;
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+    height: 100px;
+    z-index: 2;
+}
+
 #album_info{
-    display: flex;
-    flex-direction: column;
     color: white;
     z-index: 2;
+    display: flex;
+    justify-content: space-between;
 }
 
 #albumArt{
@@ -55,9 +66,13 @@ html{
 }
 
 i{
+    color: white;
     font-family: 'Material_Icons';
     font-style: normal;
     cursor: pointer;
+}
+
+.iNav{
     width: 80px;
     height: 80px;
     border-radius: 50%;
@@ -66,7 +81,7 @@ i{
     font-size: 80px;
 }
 
-i:hover{
+.iNav:hover, .iSmaller:hover{
     box-shadow: inset 0px 0px 0px 4px white;
 }
 
@@ -76,6 +91,9 @@ i:hover{
     line-height: 80px;
     font-size: 60px;
     text-align: center;
+    border-radius: 50%;
+    line-height: 80px;
+    transition: .2s;
 }
 
 i:active{
@@ -94,25 +112,30 @@ i:active{
 #songNavigation{
     padding: 10px 0;
     display: flex;
-    width: 100%;
+    width: 500px;
     height:80px;
     flex-direction: row;
     justify-content: space-evenly;
 }
 
 .albumInfoText{
-    font-size: 30px;
+    font-size: 26px;
     overflow: hidden;
     text-overflow: ellipsis; 
-    color: white;
     width: 100%;
-    text-align: center;
+    text-align: left;
     margin: 0;
     padding: 5px 0;
+
+    background-color: #333;
+    color: white;
 }
 
 #trackInfo{
-    padding: 5px 0;
+    display:flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding-left: 20px;
 }
 
 #colorDisplay{
@@ -120,7 +143,9 @@ i:active{
     flex-direction: row;
     width: 100%;
     justify-content: space-evenly;
-    padding: 10px 0;
+    margin: 10px 0;
+    height: 50px;
+    background-color: white;
 }
 
 .colorBox{
@@ -131,13 +156,75 @@ i:active{
 }
 
 #centerAll{
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 0px;
-    bottom: 0px;
-    left: 0px;
-    right: 0px;
+    position: relative;
+    height: 900px;
+    width: 100%;
     display: flex;
     flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.bulb_icon{
+    height: 80px;
+    width: 80px;
+    font-size: 50px;
+    line-height: 80px;
+    text-align: center;
+    border-radius: 50%;
+    transition: .2s;
+}
+
+#rightCenter{
+    height: 474px;
+    display: flex;
+    flex-direction: column;
+    margin-left: 20px;
+}
+
+.bulb_outer{
+    width: 80px;
+    height:80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0px 0px 0px 4px white;
+    margin: 20px;
+    transition: .2s;
+}
+
+.bumb_outer:active{
+    transition: 0;
+}
+
+#bulbGroupHeading{
+    color: #333;
+    background-color: white;
+    width: 100%;
+    font-size: 40px;
+    padding: 5px 10px;
+    text-align: center;
+    border-radius: 10px;
+}
+
+.bulb_holder{
+    display: flex;
+    flex-direction: row;
+}
+
+#top_title{
+    height: 100px;
+    width: 100%;
+    background-color: white;
+    color: #333;
+    font-size: 60px;
+    text-align: center;
+    line-height: 100px;
+}
+
+#description{
+    color: rgb(216, 216, 216);
+    font-size: 24px;
+    padding: 0 20px;
 }

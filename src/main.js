@@ -36,6 +36,20 @@ Vue.component('top_bar', {
 	`
 })
 
+Vue.component('bottom_bar', {
+	data: function () {
+		return {
+		}
+	},
+	methods: {
+	},
+	template: `
+	<div id="bottom_bar">
+		<current_song></current_song>
+	</div>
+	`
+})
+
 Vue.component('color_display', {
 	methods: {
 	},
@@ -74,7 +88,7 @@ const album_art = {
 	`
 }
 
-const current_song = {
+Vue.component('current_song', {
 	data: function () {
 		return {
 			playOrPause: 'play_arrow'
@@ -114,21 +128,20 @@ const current_song = {
 		<div id="album_info">
 			<div id="trackInfo">
 				<p class="albumInfoText"><b>{{ currentAlbumInfo[0] }}</b></p>
-				<p class="albumInfoText" style="color: #DDD; font-size: 25px;">{{ currentAlbumInfo[2] }} - {{ currentAlbumInfo[1] }}</p>
+				<p class="albumInfoText" style="color: #DDD; font-size: 18px;">{{ currentAlbumInfo[2] }} - {{ currentAlbumInfo[1] }}</p>
 			</div>
 			<div id="songNavigation" class="unselectable">
 				<i class="iSmaller" @click="testPreviousSong()">skip_previous</i>
-				<i @click="invertPlaying">{{ playOrPause }}</i>
+				<i class="iNav" @click="invertPlaying">{{ playOrPause }}</i>
 				<i class="iSmaller" @click="testNextSong()">skip_next</i>
 			</div>
-			
 		</div>
 	`
-}
+})
 
 new Vue({
 	el: '#app',
-	components: { album_art, current_song },
+	components: { album_art },
 	store,
 	created: function () {
 		window.addEventListener('resize', this.handleResize)
@@ -150,16 +163,33 @@ new Vue({
 	},
 	template: `
 	<div id="centerAll">
+		<top_bar></top_bar>
+		<bottom_bar>
+		</bottom_bar>
 		<div id="leftCenter">
-			<top_bar></top_bar>
 			<div id="albumInfoFlex">
 				<album_art></album_art>
-				<current_song></current_song>
 				<color_display></color_display>
 			</div>
 		</div>
 		<div id="rightCenter">
-			<h1>TEST</h1>
+			<div id="bulbGroupHeading"><b>Bulb Groups</b></div>
+			<div class="bulb_holder">
+				<div class="bulb_outer">
+					<i class="bulb_icon unselectable">wb_incandescent</i>
+				</div>
+				<div class="bulb_outer">
+					<i class="bulb_icon unselectable">wb_incandescent</i>
+				</div>
+				<div class="bulb_outer">
+					<i class="bulb_icon unselectable">wb_incandescent</i>
+				</div>
+			</div>
+			<div class="bulb_holder">
+				<div class="bulb_outer">
+					<i class="bulb_icon unselectable">wb_incandescent</i>
+				</div>
+			</div>
 		</div>
 	</div>
 	`
