@@ -17,7 +17,6 @@ const store = new Vuex.Store({
 		},
 		updateColors (state, colors){
 			state.currentColors = colors;
-			console.log(colors);
 		},
 	},
 })

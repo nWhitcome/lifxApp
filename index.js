@@ -3,7 +3,6 @@ var app = express();
 var port = process.env.PORT || 3000;
 var http = require('http').createServer(app);
 const io = require('socket.io')(http);
-var Vibrant = require('node-vibrant')
 const path = require('path')
 const getColors = require('get-image-colors')
 
@@ -12,10 +11,7 @@ app.get('/', function(request, response) {
     response.sendFile(__dirname + '/index.html');
 });
 
-app.set("ipaddr", "localhost");
-app.set("port", port);
-
-http.listen(port, 'localhost');
+http.listen(port);
 console.log('listening on port ' + port)
 
 io.on('connection', function(socket) {
