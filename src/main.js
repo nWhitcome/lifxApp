@@ -4,19 +4,34 @@ const store = new Vuex.Store({
 	state: {
 		testArt: ['basementPic.jpg', 'deskPic.jpg', 'tetonsPic.jpg'],
 		testTrackInfo: [['Bars and Stages', 'It Came From the Basement', 'Tetrad'], ['Desk', 'Desk', 'Nathan Whitcome'], ['Tetons', 'Summer 2018', 'Nathan Whitcome']],
+		currentTrackInfo: [],
 		testCurrentArtId: 0,
 		musicPlaying: false,
 		currentColors: [],
+		logState: false,
+		currentArt: '',
+		imageKeyVal: 0,
+		finishedDownloading: false,
+		albUrl: "",
 	},
 	mutations:{
 		updateArt (state, newIndex){
 			state.testCurrentArtId = newIndex;
 		},
-		updatePlaying (state){
-			state.musicPlaying = !state.musicPlaying;
+		updatePlaying (state, data){
+			state.musicPlaying = data;
 		},
 		updateColors (state, colors){
 			state.currentColors = colors;
+		},
+		updateLogState (state, loggedIn){
+			state.logState = loggedIn;
+		},
+		updateTrackInfo (state, trackInfo){
+			state.currentTrackInfo = trackInfo;
+		},
+		updateAlbUrl (state, index){
+			state.albUrl = index;
 		},
 	},
 })
@@ -31,6 +46,7 @@ Vue.component('top_bar', {
 	},
 	template: `
 	<div id="top_bar">
+		<i id="add_button" class="unselectable">add</i>
 	</div>
 	`
 })
@@ -66,73 +82,46 @@ Vue.component('color_display', {
 })
 
 const album_art = {
-	computed: {
-		currentArtId (){
-			return 'src/testArt/' + this.$store.state.testArt[this.$store.state.testCurrentArtId];
-		},
-		currentAlbumInfo (){
-			return this.$store.state.testTrackInfo[this.$store.state.testCurrentArtId];
-		},
-	},
-	methods: {
-		logValues (value){
-			console.log(value);
-			socket.emit('getColors', 'src/testArt/' + this.$store.state.testArt[this.$store.state.testCurrentArtId])
-		}
-	},
+	props:['albPath'],
 	template: `
-		<div>
-			<img id="albumArt" @load="logValues('loaded')" :src="currentArtId">
+		<div style="width: 400px; height: 400px;">
+			<img id="albumArt" :src="albPath">
 		</div>
 	`
 }
 
 Vue.component('current_song', {
-	data: function () {
-		return {
-			playOrPause: 'play_arrow'
-		}
-	},
 	computed: {
 		currentAlbumInfo (){
-			return this.$store.state.testTrackInfo[this.$store.state.testCurrentArtId];
+			return this.$store.state.currentTrackInfo;
+		},
+		playOrPause (){
+			return this.$store.state.musicPlaying;
 		},
 	},
 	methods: {
-		testNextSong(event){
-			var currentId = this.$store.state.testCurrentArtId;
-			var testAlbumArt = this.$store.state.testArt;
-			if(currentId + 1 > testAlbumArt.length - 1)
-				this.$store.commit('updateArt', 0)
-			else
-				this.$store.commit('updateArt', currentId + 1)
+		previousSong(event){
+			socket.emit('changeSong', 'back');
 		},
-		testPreviousSong(event){
-			var currentId = this.$store.state.testCurrentArtId;
-			var testAlbumArt = this.$store.state.testArt;
-			if(currentId - 1 < 0)
-				this.$store.commit('updateArt', testAlbumArt.length - 1)
-			else
-				this.$store.commit('updateArt', currentId - 1)
+		nextSong(event){
+			socket.emit('changeSong', 'forward');
 		},
 		invertPlaying(event){
-			if(this.playOrPause == 'play_arrow')
-				this.playOrPause = 'pause';
-			else if(this.playOrPause == 'pause')
-				this.playOrPause = 'play_arrow';
-			updatePlaying();
+			socket.emit('togglePlayback');
+			console.log("changing")
 		}
 	},
 	template: `
 		<div id="album_info">
 			<div id="trackInfo">
 				<p class="albumInfoText"><b>{{ currentAlbumInfo[0] }}</b></p>
-				<p class="albumInfoText" style="color: #DDD; font-size: 18px;">{{ currentAlbumInfo[2] }} - {{ currentAlbumInfo[1] }}</p>
+				<p class="albumInfoText" style="font-size: 14px;">{{ currentAlbumInfo[2] }} - {{ currentAlbumInfo[1] }}</p>
 			</div>
 			<div id="songNavigation" class="unselectable">
-				<i class="iSmaller" @click="testPreviousSong()">skip_previous</i>
-				<i class="iNav" @click="invertPlaying">{{ playOrPause }}</i>
-				<i class="iSmaller" @click="testNextSong()">skip_next</i>
+				<i class="iSmaller" @click="previousSong()">skip_previous</i>
+				<i class="iNav" v-if="playOrPause == true" @click="invertPlaying">pause</i>
+				<i class="iNav" v-else @click="invertPlaying">play_arrow</i>
+				<i class="iSmaller" @click="nextSong()">skip_next</i>
 			</div>
 		</div>
 	`
@@ -155,23 +144,38 @@ new Vue({
 	mounted: function(){
 		socket.on('connect', function(data){
 			console.log('connected');
+			this.$store.commit('updateLogState', data);
+		}.bind(this));
+		socket.on('updateLogin', function(data){
+			console.log("updating state")
+			this.$store.commit('updateLogState', data);
 		}.bind(this));
 		socket.on('updateColors', function(data){
 			this.$store.commit('updateColors', data)
 		}.bind(this));
+		socket.on('currentSongInfo', function(data){
+			this.$store.commit('updateTrackInfo', data)
+		}.bind(this));
+		socket.on('albArt', function(data){
+			this.$store.commit('updateAlbUrl', data)
+		}.bind(this));
+		socket.on('playState', function(data){
+			this.$store.commit('updatePlaying', data)
+		}.bind(this));
 	},
 	template: `
-	<div id="centerAll">
+	<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+		<div v-if="this.$store.state.logState == true" id="centerAll">
 		<top_bar></top_bar>
 		<bottom_bar>
 		</bottom_bar>
 		<div id="leftCenter">
 			<div id="albumInfoFlex">
-				<album_art></album_art>
+				<album_art :albPath="this.$store.state.albUrl"></album_art>
 				<color_display></color_display>
 			</div>
 		</div>
-		<div id="rightCenter">
+		<!--<div id="rightCenter">
 			<div id="bulbGroupHeading"><b>Bulb Groups</b></div>
 			<div class="bulb_holder">
 				<div class="bulb_outer">
@@ -189,6 +193,11 @@ new Vue({
 					<i class="bulb_icon unselectable">wb_incandescent</i>
 				</div>
 			</div>
+		</div>-->
+		</div>
+		<div id="centerAll" style="flex-direction: column;" v-else>
+			<h1 style="color: white; font-size: 30px;">Log in with Spotify</h1>
+			<a id="spotifyLogin" href="/login">Login</a>
 		</div>
 	</div>
 	`
