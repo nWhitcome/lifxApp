@@ -11,6 +11,7 @@ const io = require('socket.io')(http);
 const path = require('path')
 const getColors = require('get-image-colors')
 const LifxLan = require('node-lifx-lan');
+var hexToHsl = require('hex-to-hsl');
 var myBulbs = [];
 
 var client_id = '76dbacbf5b4049a0b04adc95c0de2856'; // Your client id
@@ -20,7 +21,6 @@ var redirect_uri = 'http://localhost:' + port + '/callback'; // Your redirect ur
 var generateRandomString = function (length) {
   var text = '';
   var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
   for (var i = 0; i < length; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
@@ -32,6 +32,15 @@ var loginState = false;
 var playInterval;
 var y;
 
+var songTime = {
+  startTime: 0,
+  through: 0
+};
+
+var visualInterval = null;
+var peakInterval = null;
+
+var currentColors;
 var currentArt = null;
 var albArt = null;
 var oldSongInfo = [];
@@ -161,6 +170,7 @@ function getIfPlaying(options) {
 }
 
 function changeSong(direction) {
+  clearTimeout(visualInterval);
   var command = '';
   if (direction == 'forward') {
     command = 'https://api.spotify.com/v1/me/player/next'
@@ -179,7 +189,6 @@ function changeSong(direction) {
 
 function getBulbs(theseOptions) {
   LifxLan.discover().then((device_list) => {
-    console.log(device_list);
     device_list.forEach((device) => {
       if(device.deviceInfo.location.label === "Nate\'s Room")
       	myBulbs.push(device);
@@ -192,6 +201,7 @@ function getBulbs(theseOptions) {
 
 function togglePlayback() {
   clearInterval(playInterval);
+  clearTimeout(visualInterval);
   var pauseOptions = {
     url: 'https://api.spotify.com/v1/me/player/pause',
     headers: { 'Authorization': 'Bearer ' + access },
@@ -228,10 +238,14 @@ function getCurrentlyPlaying(theseOptions) {
     if (body != undefined && body.item != undefined) {
       songInfo = [body.item.name, body.item.artists[0].name, body.item.album.name]
       if (oldSongInfo.length == 0 || (body.item.album.images[2].url != oldSongInfo[0] || body.item.name != oldSongInfo[1] || body.item.artists[0].name != oldSongInfo[2] || body.item.album.name != oldSongInfo[3])) {
+        //console.log(body)
+        songTime.startTime = body.timestamp;
+        songTime.through = body.progress_ms;
+        getTrackAnalysis(theseOptions, body.item.id);
         clearInterval(y);
         currentArt = __dirname + '/currentArt/albArt.jpg'
         download(body.item.album.images[2].url, currentArt, function () {
-          y = setInterval(function () { getCurrentlyPlaying(theseOptions); }, 1000);
+          y = setInterval(function () { getCurrentlyPlaying(theseOptions); }, 500);
           albArt = body.item.album.images[0].url;
           io.emit('currentSongInfo', songInfo);
           io.emit('albArt', albArt);
@@ -241,6 +255,65 @@ function getCurrentlyPlaying(theseOptions) {
       }
     }
   })
+}
+
+function getTrackAnalysis(theseOptions, idNum){
+  var options = {
+    url: 'https://api.spotify.com/v1/audio-analysis/' + idNum,
+    headers: theseOptions.headers,
+    json: true
+  }
+  var beforeTime = new Date().getTime();
+  request.get(options, function (error, response, body){
+    var timeSeg = body.segments;
+    var requestTime = (new Date().getTime() - beforeTime) ;
+    console.log("Time through: " + requestTime)
+    closestTime(timeSeg, requestTime + songTime.through);
+    //myBulbs.forEach(function(element){setBrightness(element, 0.1, 50)})
+  })
+}
+
+function setNextInterval(useTime, timeSeg){
+  if(useTime.index + 1 < timeSeg.length){
+    var nextVal = timeSeg[useTime.index].duration * 1000;
+    var nextPeak = timeSeg[useTime.index].loudness_max_time * 1000;
+    visualInterval = setTimeout(setNextInterval, nextVal, {item: timeSeg[timeSeg.index + 1], index: useTime.index + 1}, timeSeg)
+    //console.log("Max: " + (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_max))*.12)).toFixed(2))
+    myBulbs.forEach(function(element, index){setBrightness(element, (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_max))*.12)).toFixed(2), nextPeak | 0, index)})
+    peakInterval = setTimeout(function(){
+      myBulbs.forEach(function(element, index){setBrightness(element, (1-(Math.sqrt(Math.abs(timeSeg[useTime.index + 1].loudness_start))*.12)).toFixed(2), nextVal - nextPeak | 0, index)})
+      //console.log("Start: " + (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_start))*.12)).toFixed(2))
+    }, nextPeak)
+  }
+}
+
+function setBrightness(bulb, segBrightness, transTime, index){
+  var hueVal = (hexToHsl(currentColors[index%5])[0]) / 360;
+  var saturationVal = (hexToHsl(currentColors[index%5])[1]) / 100;
+  try{
+    bulb.setColor({
+      color: { hue: hueVal, saturation: saturationVal, 
+        brightness: parseFloat(segBrightness) 
+        //brightness: (hexToHsl(currentColors[index%5])[2]) / 100
+      },
+      duration: transTime
+    })
+  }
+  catch (err) {
+    console.log("Failed")
+  }
+}
+
+//Finds the item in the segment array that's the closest in time to the current time through the song
+function closestTime(array, cur_time){
+  for(var i = 0; i < array.length; i++){
+    if(array[i].start > cur_time/1000){
+      //console.log(cur_time)
+      //console.log("Next item: " + array[i].start*1000);
+      visualInterval = setTimeout(setNextInterval, (array[i].start*1000) - (cur_time), {item: array[i], index: i}, array);
+      return foundItem = {item: array[i], index: i};
+    }
+  }
 }
 
 var download = function (uri, filename, callback) {
@@ -260,7 +333,7 @@ function getAlbumColors(imagePath) {
 function setColors(colors) {
   var i = 0;
   while (i < myBulbs.length) {
-    sendColor(myBulbs[i], colors[i % 5], 1000, 5)
+    sendColor(myBulbs[i], colors[i % 5], 500, 5)
     i++
   }
 }
@@ -299,5 +372,3 @@ io.on('connection', function (socket) {
     changeSong(direction);
   })
 });
-
-
