@@ -39,6 +39,7 @@ var songTime = {
 
 var visualInterval = null;
 var peakInterval = null;
+var prevPeakAvg = null;
 
 var currentColors;
 var currentArt = null;
@@ -234,14 +235,17 @@ function togglePlayback() {
 }
 
 function getCurrentlyPlaying(theseOptions) {
+  var beforeTime = new Date().getTime();
   request.get(theseOptions, function (error, response, body) {
     if (body != undefined && body.item != undefined) {
       songInfo = [body.item.name, body.item.artists[0].name, body.item.album.name]
       if (oldSongInfo.length == 0 || (body.item.album.images[2].url != oldSongInfo[0] || body.item.name != oldSongInfo[1] || body.item.artists[0].name != oldSongInfo[2] || body.item.album.name != oldSongInfo[3])) {
         //console.log(body)
         songTime.startTime = body.timestamp;
-        songTime.through = body.progress_ms;
-        getTrackAnalysis(theseOptions, body.item.id);
+        songTime.through = body.progress_ms 
+        //+ (new Date().getTime() - songTime.startTime);
+        console.log(body.progress_ms)
+        getTrackAnalysis(theseOptions, body.item.id, beforeTime);
         clearInterval(y);
         currentArt = __dirname + '/currentArt/albArt.jpg'
         download(body.item.album.images[2].url, currentArt, function () {
@@ -257,18 +261,18 @@ function getCurrentlyPlaying(theseOptions) {
   })
 }
 
-function getTrackAnalysis(theseOptions, idNum){
+function getTrackAnalysis(theseOptions, idNum, beforeTime){
   var options = {
     url: 'https://api.spotify.com/v1/audio-analysis/' + idNum,
     headers: theseOptions.headers,
     json: true
   }
-  var beforeTime = new Date().getTime();
+  var beforeRequest = new Date().getTime();
   request.get(options, function (error, response, body){
     var timeSeg = body.segments;
-    var requestTime = (new Date().getTime() - beforeTime) ;
-    console.log("Time through: " + requestTime)
-    closestTime(timeSeg, requestTime + songTime.through);
+    var requestTime = ((new Date().getTime() - beforeRequest) + songTime.through);
+    console.log("Time through: " + songTime.through)
+    closestTime(timeSeg, requestTime);
     //myBulbs.forEach(function(element){setBrightness(element, 0.1, 50)})
   })
 }
@@ -277,13 +281,39 @@ function setNextInterval(useTime, timeSeg){
   if(useTime.index + 1 < timeSeg.length){
     var nextVal = timeSeg[useTime.index].duration * 1000;
     var nextPeak = timeSeg[useTime.index].loudness_max_time * 1000;
+    var peakAverage = (timeSeg[useTime.index].loudness_max + timeSeg[useTime.index + 1].loudness_start)/2
     visualInterval = setTimeout(setNextInterval, nextVal, {item: timeSeg[timeSeg.index + 1], index: useTime.index + 1}, timeSeg)
+    
     //console.log("Max: " + (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_max))*.12)).toFixed(2))
-    myBulbs.forEach(function(element, index){setBrightness(element, (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_max))*.12)).toFixed(2), nextPeak | 0, index)})
-    peakInterval = setTimeout(function(){
-      myBulbs.forEach(function(element, index){setBrightness(element, (1-(Math.sqrt(Math.abs(timeSeg[useTime.index + 1].loudness_start))*.12)).toFixed(2), nextVal - nextPeak | 0, index)})
+    //myBulbs.forEach(function(element, index){setBrightness(element, (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_max))*.12)).toFixed(2), nextPeak | 0, index)})
+    var DBtoNum = (1.3-(Math.sqrt(Math.abs(peakAverage))*.3)).toFixed(2);
+    if(DBtoNum <= 0) DBtoNum = 0.01;
+    if(DBtoNum > 1) DBtoNum = 1;
+
+    if(useTime.index > 0){
+      if(Math.abs(DBtoNum - prevPeakAvg) > 0.03){
+        //console.log("AVG: " + DBtoNum)
+        //console.log(Math.abs(DBtoNum) + ", " + Math.abs(prevPeakAvg))
+        if(nextVal > 500 && (Math.abs(DBtoNum) > Math.abs(prevPeakAvg))){
+          //console.log(nextVal);
+          setTimeout(function(){
+            myBulbs.forEach(function(element, index){setBrightness(element, DBtoNum, 500.0, index)})
+          }, nextVal - 500)
+        }
+        else{
+          myBulbs.forEach(function(element, index){setBrightness(element, DBtoNum, nextVal | 0, index)})
+        }
+        prevPeakAvg = DBtoNum;
+      }
+    }
+    
+    /*if(nextPeak > 40.0){
+      console.log("Peak: " + nextPeak)
+      peakInterval = setTimeout(function(){
+        myBulbs.forEach(function(element, index){setBrightness(element, (1-(Math.sqrt(Math.abs(timeSeg[useTime.index + 1].loudness_start))*.12)).toFixed(2), nextVal - nextPeak | 0, index)})
       //console.log("Start: " + (1-(Math.sqrt(Math.abs(timeSeg[useTime.index].loudness_start))*.12)).toFixed(2))
-    }, nextPeak)
+      }, nextPeak)
+    }*/
   }
 }
 
@@ -310,7 +340,8 @@ function closestTime(array, cur_time){
     if(array[i].start > cur_time/1000){
       //console.log(cur_time)
       //console.log("Next item: " + array[i].start*1000);
-      visualInterval = setTimeout(setNextInterval, (array[i].start*1000) - (cur_time), {item: array[i], index: i}, array);
+      visualInterval = setTimeout(setNextInterval, ((array[i].start*1000) - (cur_time)), {item: array[i], index: i}, array);
+      prevPeakAvg = 1.0;
       return foundItem = {item: array[i], index: i};
     }
   }
