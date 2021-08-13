@@ -11,11 +11,14 @@ const io = require('socket.io')(http);
 const path = require('path')
 const getColors = require('get-image-colors')
 const LifxLan = require('node-lifx-lan');
+const dotenv = require('dotenv');
 var hexToHsl = require('hex-to-hsl');
 var myBulbs = [];
 
-var client_id = '76dbacbf5b4049a0b04adc95c0de2856'; // Your client id
-var client_secret = '6b199d14a5f54340b482da683e998c3a'; // Your secret
+dotenv.config();
+
+var client_id = process.env.CLIENT_ID; // Your client id
+var client_secret = process.env.CLIENT_SECRET; // Your secret
 var redirect_uri = 'http://localhost:' + port + '/callback'; // Your redirect uri
 
 var generateRandomString = function (length) {
