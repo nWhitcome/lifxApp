@@ -5,7 +5,6 @@ var http = require('http').createServer(application);
 var request = require('request'); // "Request" library
 var cors = require('cors');
 var fs = require('fs');
-var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
 const io = require('socket.io')(http);
 const path = require('path')
@@ -54,12 +53,8 @@ var currentlyPlaying = false;
 var access = null;
 
 application.use(express.static(__dirname)).use(cors()).use(cookieParser());
-/*
-app.get('/', function(request, response) {
-    response.sendFile(__dirname + '/index.html');
-});
-*/
 
+// Request authorization with the Spotify API
 application.get('/login', function (req, res) {
   var state = generateRandomString(16);
   res.cookie(stateKey, state);
@@ -67,7 +62,7 @@ application.get('/login', function (req, res) {
   // your application requests authorization
   var scope = 'user-read-private user-read-email user-read-playback-state user-read-currently-playing user-modify-playback-state';
   res.redirect('https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
+    new URLSearchParams({
       response_type: 'code',
       client_id: client_id,
       scope: scope,
@@ -87,7 +82,7 @@ application.get('/callback', function (req, res) {
 
   if (state === null || state !== storedState) {
     res.redirect('/#' +
-      querystring.stringify({
+      new URLSearchParams({
         error: 'state_mismatch'
       }));
   } else {
@@ -100,24 +95,19 @@ application.get('/callback', function (req, res) {
         grant_type: 'authorization_code'
       },
       headers: {
-        'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
+        'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
       },
       json: true
     };
 
     request.post(authOptions, function (error, response, body) {
       if (!error && response.statusCode === 200) {
-
-        var access_token = body.access_token,
-          refresh_token = body.refresh_token;
-        access = body.access_token;
-
+        var access_token = body.access_token;
         var options = {
           url: 'https://api.spotify.com/v1/me/player/currently-playing',
           headers: { 'Authorization': 'Bearer ' + access_token },
           json: true
         };
-
         var options2 = {
           url: 'https://api.spotify.com/v1/me/player',
           headers: { 'Authorization': 'Bearer ' + access_token },
@@ -129,21 +119,20 @@ application.get('/callback', function (req, res) {
         loginState = true;
       } else {
         res.redirect('/#' +
-          querystring.stringify({
+          new URLSearchParams({
             error: 'invalid_token'
           }));
-      }
+        }
     });
   }
 });
 
 application.get('/refresh_token', function (req, res) {
-
   // requesting access token from refresh token
   var refresh_token = req.query.refresh_token;
   var authOptions = {
     url: 'https://accounts.spotify.com/api/token',
-    headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64')) },
+    headers: { 'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64')) },
     form: {
       grant_type: 'refresh_token',
       refresh_token: refresh_token
@@ -164,6 +153,7 @@ application.get('/refresh_token', function (req, res) {
 http.listen(port);
 console.log('listening on port ' + port);
 
+// Get whether there is currently a song playing
 function getIfPlaying(options) {
   request.get(options, function (error, response, body) {
     if (body != undefined && body.is_playing != currentlyPlaying) {
@@ -173,6 +163,7 @@ function getIfPlaying(options) {
   })
 }
 
+// Change the song either forwards or backwards based on passed variable.
 function changeSong(direction) {
   clearTimeout(visualInterval);
   var command = '';
@@ -191,9 +182,11 @@ function changeSong(direction) {
   });
 }
 
+// Get a list of bulbs on the current network
 function getBulbs(theseOptions) {
   LifxLan.discover().then((device_list) => {
     device_list.forEach((device) => {
+      console.log(device.deviceInfo.label)
       if(device.deviceInfo.location.label === "Nate\'s Room")
       	myBulbs.push(device);
     })
@@ -203,6 +196,7 @@ function getBulbs(theseOptions) {
   });
 }
 
+// Pause or play the current song
 function togglePlayback() {
   clearInterval(playInterval);
   clearTimeout(visualInterval);
@@ -237,6 +231,7 @@ function togglePlayback() {
   }
 }
 
+// Get which song is currently playing
 function getCurrentlyPlaying(theseOptions) {
   var beforeTime = new Date().getTime();
   request.get(theseOptions, function (error, response, body) {
@@ -264,6 +259,7 @@ function getCurrentlyPlaying(theseOptions) {
   })
 }
 
+// Get the track peak volume etc analysis from the Spotify API
 function getTrackAnalysis(theseOptions, idNum, beforeTime){
   var options = {
     url: 'https://api.spotify.com/v1/audio-analysis/' + idNum,
@@ -320,6 +316,7 @@ function setNextInterval(useTime, timeSeg){
   }
 }
 
+// Set the brightness of a given bulb with a given transition time
 function setBrightness(bulb, segBrightness, transTime, index){
   var hueVal = (hexToHsl(currentColors[index%5])[0]) / 360;
   var saturationVal = (hexToHsl(currentColors[index%5])[1]) / 100;
@@ -356,6 +353,7 @@ var download = function (uri, filename, callback) {
   });
 };
 
+// Grab a few colors from the album art of the song that is currently playing
 function getAlbumColors(imagePath) {
   getColors(path.join(imagePath)).then(colors => {
     currentColors = colors.map(color => color.hex())
@@ -364,6 +362,7 @@ function getAlbumColors(imagePath) {
   })
 }
 
+// Set the colors of all of the bulbs in the myBulbs list using the colors passed into the function
 function setColors(colors) {
   var i = 0;
   while (i < myBulbs.length) {
@@ -372,6 +371,7 @@ function setColors(colors) {
   }
 }
 
+//Send an individual color to a single bulb for a certain amount of time
 function sendColor(bulb, color, duration, tries) {
   if (tries > 0) {
     try {
